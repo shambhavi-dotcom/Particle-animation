@@ -1,0 +1,115 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>p5 Fireworks</title>
+<script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
+<style> body{margin:0;background:#071022;color:#ddd;font-family:system-ui} canvas{display:block}</style>
+</head>
+<body>
+<script>
+let particles = [];
+let rockets = [];
+let palettes = [
+  ['#ff6b6b','#ffd93d','#ffd7b5','#ff8fab'],
+  ['#8ec5ff','#b388ff','#ffd1f0','#37e8c7'],
+  ['#fff3b0','#ffb3c1','#ffa86b','#8be9a8']
+];
+
+function setup(){
+  createCanvas(windowWidth, windowHeight);
+  pixelDensity(max(1,displayDensity()));
+  noStroke();
+}
+
+function windowResized(){ resizeCanvas(windowWidth, windowHeight); }
+
+function mousePressed(){
+  rockets.push(new Rocket(mouseX, height+10));
+}
+function touchStarted(){
+  rockets.push(new Rocket(touchX || mouseX, height+10));
+  return false;
+}
+
+class Rocket {
+  constructor(x,y){
+    this.pos = createVector(x,y);
+    this.vel = createVector(random(-1.4,1.4), random(-8,-12));
+    this.color = random(palettes);
+    this.life = 90;
+  }
+  update(){
+    this.vel.y += 0.12;
+    this.pos.add(this.vel);
+    this.life--;
+    if (this.vel.y > -1.5 || this.life < 10) {
+      this.explode();
+      return true; // remove
+    }
+    return false;
+  }
+  explode(){
+    let count = int(random(40,120));
+    for (let i=0;i<count;i++){
+      let ang = random(TWO_PI);
+      let sp = pow(random(),0.6) * random(1,6);
+      particles.push(new Particle(this.pos.x, this.pos.y, p5.Vector.fromAngle(ang).mult(sp), random(this.color)));
+    }
+  }
+  draw(){
+    fill(random(this.color));
+    ellipse(this.pos.x, this.pos.y, 4,4);
+  }
+}
+
+class Particle {
+  constructor(x,y,vel,color){
+    this.pos = createVector(x,y);
+    this.vel = vel;
+    this.color = color;
+    this.life = random(60,150);
+    this.decay = random(0.006, 0.02);
+    this.alpha = 1;
+    this.size = random(1.2,3.8);
+  }
+  update(){
+    // mouse attraction
+    let m = createVector(mouseX, mouseY);
+    let d = p5.Vector.dist(this.pos, m);
+    if (d < 400){
+      let pull = p5.Vector.sub(m, this.pos).normalize().mult((1 - d/400) * 0.02 * (mouseIsPressed?2:1));
+      this.vel.add(pull);
+    }
+    this.vel.y += 0.08;
+    this.pos.add(this.vel);
+    this.alpha -= this.decay;
+    this.life--;
+    return (this.life <= 0 || this.alpha <= 0.01 || this.pos.y > height + 30);
+  }
+  draw(){
+    push();
+    blendMode(ADD);
+    fill(color(this.color + hex( int(this.alpha*255), 2 )));
+    // simple glow
+    ellipse(this.pos.x, this.pos.y, this.size*2, this.size*2);
+    pop();
+  }
+}
+
+function draw(){
+  background(5,6,11,60); // slight motion blur
+  if (random(1) < 0.002) rockets.push(new Rocket(random(60,width-60), height+10));
+  for (let i = rockets.length -1; i >= 0; --i){
+    rockets[i].draw();
+    if (rockets[i].update()) rockets.splice(i,1);
+  }
+  for (let i = particles.length -1; i >=0; --i){
+    particles[i].draw();
+    if (particles[i].update()) particles.splice(i,1);
+  }
+}
+</script>
+</body>
+</html>
